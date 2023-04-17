@@ -1,0 +1,4 @@
+motion_0系列，是全部的bvh
+motion_try_0系列，是选取的一小部分bvh，模拟的就是用motion_try
+训练时候，训练集对应的分数为：try_train_score，验证集是：try_val_score，没有加try的为全部的bvh
+
