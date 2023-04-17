@@ -1,0 +1,9 @@
+1、data中的Lafan1文件是关于lafan文件的读取，更换数据集的话，需要在这个文件里更改读取数据的地址，即motion
+2、models中的lafan文件夹下是各种文件的读取方式：
+extract是原始的，extract1是读取有失真等级的
+extract_every1和2是当时打分时候的用的
+extract_motion是现在用的
+3、下面是关键的几个python文件：
+bvh_remake：制作不同等级的bvh文件
+compute_four: 计算bvh文件的指标
+lafan_test:训练模型用的，更换数据集的话，需要在这个文件里更改打分数据的地址
