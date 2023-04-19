@@ -161,7 +161,7 @@ if __name__ == '__main__':
 
         # optimization
         "batch_size":8,
-        "learning_rate": 1e-5,
+        "learning_rate": 1e-4,
         "weight_decay": 1e-5,
         "n_epoch": 1000,
         "val_freq": 1,

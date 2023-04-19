@@ -4,44 +4,7 @@ import torch.nn as nn
 import numpy as np
 import tensorflow as tf
 from models.lafan import extract_motion
-class FrameEncoder(nn.Module):
-    def __init__(self, input_dim, block_num):
-        super(FrameEncoder, self).__init__()
-        self.block_num = block_num
-        self.conv1 = nn.Conv1d(input_dim, input_dim, kernel_size=1, stride=1)
 
-        # encoder block
-        self.enc_pi1 = nn.Conv1d(input_dim, input_dim // 2, kernel_size=1, stride=1)
-        self.enc_pi2 = nn.Conv1d(input_dim // 2, input_dim, kernel_size=1, stride=1)
-        self.enc_tao = nn.Conv1d(input_dim, input_dim, kernel_size=1, stride=1)
-
-        self.conv2 = nn.Conv1d(input_dim, input_dim, kernel_size=1, stride=1)
-        self.conv_z_attention = nn.Conv1d(input_dim, input_dim, kernel_size=1, stride=1)
-
-        self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        h = self.conv1(x)
-
-        for i in range(self.block_num):
-            pi = self.relu(h)
-            pi = self.enc_pi1(pi)
-            pi = self.relu(pi)
-            pi = self.enc_pi2(pi)
-
-            tau = self.enc_tao(h)
-            tau = self.sigmoid(tau)
-            h = h * (1 - tau) + pi * tau
-
-        z = self.conv2(h)
-
-        z_attention = self.conv_z_attention(h)
-        z_attention = self.sigmoid(z_attention)
-
-        z = torch.multiply(z, z_attention)
-
-        return z
 
 # 一个数据加载器，这个数据加载器每次可以返回一个 Batch 的数据供模型训练使用。
 class Lafan1(torch.utils.data.Dataset):
@@ -72,12 +35,8 @@ class Lafan1(torch.utils.data.Dataset):
         # dis_files_data：图片数据的名称 score_list：图片分数的名称
         self.data_dict = {'d_motion_list': dis_files_data, 'score_list': score_data}
         X,self.res = extract_motion.get_lafan1_set(motion, self.actors, window=50, offset=20)
-        self.res=self.res.reshape(self.res.shape[0],self.res.shape[1],-1)
-        #print(np.shape(self.res))
-        self.res=torch.from_numpy(self.res).to(torch.float32)
-        enc = FrameEncoder(input_dim=50, block_num=3)
-        self.res = enc(self.res)
-
+        
+        #print("self.res",np.shape(self.res))
     def normalization(self, data):
         range = np.max(data) - np.min(data)
         return (data - np.min(data)) / range
@@ -95,28 +54,12 @@ class Lafan1(torch.utils.data.Dataset):
         d_img = np.array(d_img).astype('float32') / 255
         d_img = np.transpose(d_img, (2, 0, 1))
         '''
-        sum_out1 = []
-        tensor = []
-        inputs = []
-# sum_out=np.random.rand(3,224, 224)
+    
+
         d_motion_name = int(self.data_dict['d_motion_list'][idx])
         d_motion = self.res[d_motion_name]
-        sum_out1 = d_motion.detach().numpy()
-        sum_out1= np.expand_dims(sum_out1, 0)
-        sum_out1 = np.concatenate([sum_out1, sum_out1, sum_out1], axis=0)
-        sum_out1= np.expand_dims(sum_out1, 0)
-        #print(np.shape(sum_out1))
-        conv_0=torch.nn.Conv2d(in_channels=3,out_channels=3,kernel_size=(1,39),stride=1,padding=1)
-        conv_1=torch.nn.Conv2d(in_channels=3,out_channels=3,kernel_size=5,stride=1,padding=4)
-        inputs = torch.from_numpy(sum_out1).to(torch.float32)
-        #print(np.shape(inputs))
-        inputs = conv_0(inputs)
-        for i in range((224-52)//(4*2+1-5)):
-            inputs = conv_1(inputs)
-        inputs= inputs.detach().numpy()
-        #print(np.shape(inputs))
-        d_motion = inputs[0]
-
+       
+        #print("d_motion",np.shape(d_motion))
         #print(np.shape(d_motion))
 
         score = self.data_dict['score_list'][idx]

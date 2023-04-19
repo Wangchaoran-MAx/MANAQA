@@ -7,7 +7,44 @@ from models.swin import SwinTransformer
 from torch import nn
 from einops import rearrange
 
+class FrameEncoder(nn.Module):
+    def __init__(self, input_dim, block_num):
+        super(FrameEncoder, self).__init__()
+        self.block_num = block_num
+        self.conv1 = nn.Conv1d(input_dim, input_dim, kernel_size=1, stride=1)
 
+        # encoder block
+        self.enc_pi1 = nn.Conv1d(input_dim, input_dim // 2, kernel_size=1, stride=1)
+        self.enc_pi2 = nn.Conv1d(input_dim // 2, input_dim, kernel_size=1, stride=1)
+        self.enc_tao = nn.Conv1d(input_dim, input_dim, kernel_size=1, stride=1)
+
+        self.conv2 = nn.Conv1d(input_dim, input_dim, kernel_size=1, stride=1)
+        self.conv_z_attention = nn.Conv1d(input_dim, input_dim, kernel_size=1, stride=1)
+
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        h = self.conv1(x)
+
+        for i in range(self.block_num):
+            pi = self.relu(h)
+            pi = self.enc_pi1(pi)
+            pi = self.relu(pi)
+            pi = self.enc_pi2(pi)
+
+            tau = self.enc_tao(h)
+            tau = self.sigmoid(tau)
+            h = h * (1 - tau) + pi * tau
+
+        z = self.conv2(h)
+
+        z_attention = self.conv_z_attention(h)
+        z_attention = self.sigmoid(z_attention)
+
+        z = torch.multiply(z, z_attention)
+
+        return z
 class TABlock(nn.Module):
     def __init__(self, dim, drop=0.1):
         super().__init__()
@@ -121,6 +158,24 @@ class MANAQA(nn.Module):
 
     def forward(self, x):
         #print('manaqa:',np.shape(x))
+        x1=x.reshape(x.shape[0],x.shape[1],-1)
+        
+        #print('x1:',np.shape(x1))
+        enc = FrameEncoder(input_dim=50, block_num=3).cuda()
+        x=enc(x1)
+        #print('encoder:',np.shape(x))
+        
+        
+        x2=x.unsqueeze(0)
+        x3=torch.cat((x2,x2,x2), dim=0)
+        x4=x3.transpose(1,0)
+        conv_0 = torch.nn.Conv2d(in_channels=3, out_channels=3, kernel_size=(1, 39), stride=1, padding=1).cuda()
+        conv_1 = torch.nn.Conv2d(in_channels=3, out_channels=3, kernel_size=5, stride=1, padding=4).cuda()
+        x=conv_0(x4)
+        for i in range((224 - 52) // (4 * 2 + 1 - 5)):
+            x=conv_1(x)
+        #print('conv:',np.shape(x))
+        
         _x = self.vit(x)
         x = self.extract_feature(self.save_output)
         self.save_output.outputs.clear()
