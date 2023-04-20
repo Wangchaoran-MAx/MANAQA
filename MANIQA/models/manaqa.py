@@ -7,6 +7,7 @@ from models.swin import SwinTransformer
 from torch import nn
 from einops import rearrange
 
+
 class FrameEncoder(nn.Module):
     def __init__(self, input_dim, block_num):
         super(FrameEncoder, self).__init__()
@@ -45,6 +46,8 @@ class FrameEncoder(nn.Module):
         z = torch.multiply(z, z_attention)
 
         return z
+
+
 class TABlock(nn.Module):
     def __init__(self, dim, drop=0.1):
         super().__init__()
@@ -148,6 +151,16 @@ class MANAQA(nn.Module):
             nn.Sigmoid()
         )
 
+        # frame encoder
+        self.enc = FrameEncoder(input_dim=50, block_num=3).cuda()
+
+        self.mlp1 = nn.Linear(66, 224)
+        self.mlp2 = nn.Linear(50, 224)
+        self.relu = nn.ReLU()
+
+        # self.conv_0 = torch.nn.Conv2d(in_channels=3, out_channels=3, kernel_size=(1, 39), stride=1, padding=1).cuda()
+        # self.conv_1 = torch.nn.Conv2d(in_channels=3, out_channels=3, kernel_size=5, stride=1, padding=4).cuda()
+
     def extract_feature(self, save_output):
         x6 = save_output.outputs[6][:, 1:]
         x7 = save_output.outputs[7][:, 1:]
@@ -157,25 +170,31 @@ class MANAQA(nn.Module):
         return x
 
     def forward(self, x):
-        #print('manaqa:',np.shape(x))
-        x1=x.reshape(x.shape[0],x.shape[1],-1)
-        
-        #print('x1:',np.shape(x1))
-        enc = FrameEncoder(input_dim=50, block_num=3).cuda()
-        x=enc(x1)
-        #print('encoder:',np.shape(x))
-        
-        
-        x2=x.unsqueeze(0)
-        x3=torch.cat((x2,x2,x2), dim=0)
-        x4=x3.transpose(1,0)
-        conv_0 = torch.nn.Conv2d(in_channels=3, out_channels=3, kernel_size=(1, 39), stride=1, padding=1).cuda()
-        conv_1 = torch.nn.Conv2d(in_channels=3, out_channels=3, kernel_size=5, stride=1, padding=4).cuda()
-        x=conv_0(x4)
+        # print('manaqa:',np.shape(x))
+        b, l, j, _ = x.shape
+        x = x.view(b, l, -1)
+        # x = self.enc(x)
+        x = self.mlp1(x)
+        x = self.relu(self.mlp2(x.permute(0, 2, 1)))
+        x = x.permute(0, 2, 1).unsqueeze(1)
+        x = x.repeat(1, 3, 1, 1)
+
+        """        
+        x1 = x.reshape(x.shape[0], x.shape[1], -1)
+        x = x.reshape(x.shape[0], x.shape[1], -1)
+
+        # x = self.enc(x1)
+
+        x2 = x.unsqueeze(0)
+        x3 = torch.cat((x2, x2, x2), dim=0)
+        x4 = x3.transpose(1, 0)
+
+        x = self.conv_0(x4)
         for i in range((224 - 52) // (4 * 2 + 1 - 5)):
-            x=conv_1(x)
-        #print('conv:',np.shape(x))
-        
+            x = self.conv_1(x)
+        # print('conv:',np.shape(x))
+        """
+
         _x = self.vit(x)
         x = self.extract_feature(self.save_output)
         self.save_output.outputs.clear()

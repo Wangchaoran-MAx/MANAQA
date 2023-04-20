@@ -248,7 +248,7 @@ def get_lafan1_set(motion, actors, window=50, offset=20):
     X[:, :, 0, 2] = X[:, :, 0, 2] - xzs[..., 1]
 
     # Unify facing on last seed frame
-    X, Q = utils.rotate_at_frame(X, Q, anim.parents, n_past=npast)
+    #X, Q = utils.rotate_at_frame(X, Q, anim.parents, n_past=npast)
 
     return X, Q
     # phases, phase_std, phase_mn

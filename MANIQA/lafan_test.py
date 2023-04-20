@@ -161,7 +161,7 @@ if __name__ == '__main__':
 
         # optimization
         "batch_size":8,
-        "learning_rate": 1e-4,
+        "learning_rate": (1e-4)/4,
         "weight_decay": 1e-5,
         "n_epoch": 1000,
         "val_freq": 1,
@@ -222,7 +222,7 @@ if __name__ == '__main__':
             [
                 #RandCrop(config.crop_size),
                 Normalize(0.5, 0.5),
-                RandHorizontalFlip(),
+                #RandHorizontalFlip(),
                 ToTensor()
             ]
         ),
@@ -245,7 +245,7 @@ if __name__ == '__main__':
         batch_size=config.batch_size,
         num_workers=config.num_workers,
         drop_last=True,
-        shuffle=False
+        shuffle=True
     )
     val_loader = DataLoader(
         dataset=val_dataset,
